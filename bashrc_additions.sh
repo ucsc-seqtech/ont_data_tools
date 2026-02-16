@@ -1,6 +1,7 @@
 # ==============================================================================
-# ont_data_tools — bashrc additions
-# Add the following to your ~/.bashrc
+# ont_data_tools — bashrc additions for PromethION towers
+# Add the following to your ~/.bashrc on the tower.
+# Not needed on the cluster — cluster users can call scripts directly.
 # ==============================================================================
 
 # >>> conda initialize >>>
@@ -19,6 +20,8 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 # --- Summary stats convenience functions ---
+# Optional aliases so tower users can run e.g. `pullstats_dna_ul --size 3.3 --dir ...`
+# without needing to activate conda or remember script paths.
 
 pullstats_dna_ul() {
     local args=("$@")
