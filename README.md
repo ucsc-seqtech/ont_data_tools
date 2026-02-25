@@ -41,8 +41,8 @@ The tools expect a standard layout at `/data/user_scripts/`:
 
 ### Basecalling
 
-- **`basecalling/run_dorado_local_dirs.sh`** — Tower basecalling. Processes a list of directories containing pod5 files sequentially with Dorado. Supports DNA/RNA models, modification calling, alignment, and dry-run mode.
-- **`basecalling/run_dorado_slurm.sh`** — SLURM cluster basecalling. Runs as an array job — each task processes one pod5 path from a list. Supports S3 downloads, tar extraction, fast5-to-pod5 conversion, and duplex mode. Edit `BASE_DIR` at the top for your cluster paths.
+- **`basecalling/run_dorado_local_dirs.sh`** — Tower basecalling. Processes a list of directories containing pod5 files sequentially with Dorado. Supports DNA/RNA models, modification calling, and dry-run mode.
+- **`basecalling/run_dorado_slurm.sh`** — SLURM cluster basecalling. Runs as an array job — each task processes one pod5 path from a list. Supports S3 downloads, tar extraction, and fast5-to-pod5 conversion. Edit `BASE_DIR` at the top for your cluster paths.
 
 ### Summary Statistics
 
@@ -93,7 +93,7 @@ run_dorado_local_dirs.sh \
 run_dorado_local_dirs.sh \
   --dirlist rna_dirs.txt \
   --model rna004_130bps_sup@v5.1.0 \
-  --estimate-poly-a \
+  --drd_opts "--estimate-poly-a" \
   --output ./rna_output
 
 # Dry run (print commands without executing)
@@ -112,6 +112,13 @@ sbatch -J dorado_SAMPLE --array=1-10%2 run_dorado_slurm.sh \
   --model sup@v5.0.0 \
   --mod 5mCG_5hmCG,6mA \
   --project /private/nanopore/basecalled/MyProject/
+
+# RNA basecalling with poly-A estimation
+sbatch -J dorado_RNA --array=1-4%2 run_dorado_slurm.sh \
+  --pod5list rna_paths.list \
+  --model rna004_130bps_sup@v5.1.0 \
+  --drd_opts "--estimate-poly-a" \
+  --project /private/nanopore/basecalled/MyRNAProject/
 ```
 
 ### Summary Statistics

@@ -14,13 +14,11 @@
 #   --model       Basecalling model (e.g., sup@v5.0.0)
 #
 # OPTIONAL ARGUMENTS:
-#   --mod               Modification model(s) (e.g., 5mCG_5hmCG,6mA)
-#   --estimate-poly-a   Enable poly-A tail estimation (for RNA)
-#   --dryrun            Print commands only; do not execute
-#   --output            Output directory (default: .)
-#   --dorado            Dorado version (default: current symlink)
-#   --reference         Path to reference genome for alignment
-#   --ref_name          Abbreviated reference name (auto-generated if omitted)
+#   --mod         Modification model(s) (e.g., 5mCG_5hmCG,6mA)
+#   --drd_opts    Extra options passed directly to dorado (e.g., "--estimate-poly-a")
+#   --dryrun      Print commands only; do not execute
+#   --output      Output directory (default: .)
+#   --dorado      Dorado version (default: current symlink)
 #
 # EXAMPLES:
 #   # Basecall DNA with mods (real run)
@@ -30,27 +28,18 @@
 #     --mod 5mCG_5hmCG,6mA \
 #     --output ./dna_output \
 #
-#   # Basecall RNA with poly-A estimation (real run)
+#   # Basecall RNA with poly-A estimation
 #   ./dorado_dirs.sh \
 #     --dirlist rna_dirs.txt \
-#     --model rna_r9.4.1_eukaryote_high \
-#     --estimate-poly-a \
-#     --output ./rna_polyA_output \
+#     --model rna004_130bps_sup@v5.1.0 \
+#     --drd_opts "--estimate-poly-a" \
+#     --output ./rna_output \
 #
 #   # Dryrun: show commands without executing
 #   ./dorado_dirs.sh \
 #     --dirlist test_dirs.txt \
 #     --model sup@v5.0.0 \
 #     --mod 5mCG_5hmCG,6mA \
-#     --dryrun \
-#
-#   # Specific Dorado version and reference (dryrun)
-#   ./dorado_dirs.sh \
-#     --dirlist sample_dirs.txt \
-#     --model sup@v5.0.0 \
-#     --dorado 1.3.0 \
-#     --reference hg38.fa \
-#     --ref_name hg38 \
 #     --dryrun \
 # ==============================================================================
 set -o errexit
@@ -70,12 +59,10 @@ readonly DORADO_BASE="${TOOLS_DIR}/tools/dorado"
 DIRLIST=""
 MODEL=""
 MOD=""
-ESTIMATE_POLY_A=false
+DRD_OPTS=()
 DRY_RUN=false
 OUTPUT=""
 DORADO_VERSION=""
-REFERENCE=""
-REF_NAME=""
 
 # ------------------------------------------------------------------------------
 # Argument Parsing
@@ -84,13 +71,11 @@ while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --dirlist)           DIRLIST="$2"; shift 2 ;;  
         --model)             MODEL="$2"; shift 2 ;;  
-        --mod)               MOD="$2"; shift 2 ;;  
-        --estimate-poly-a)   ESTIMATE_POLY_A=true; shift 1 ;;  
-        --dryrun)            DRY_RUN=true; shift 1 ;;  
-        --output)            OUTPUT="$2"; shift 2 ;;  
-        --dorado)            DORADO_VERSION="$2"; shift 2 ;;  
-        --reference)         REFERENCE="$2"; shift 2 ;;  
-        --ref_name)          REF_NAME="$2"; shift 2 ;;  
+        --mod)               MOD="$2"; shift 2 ;;
+        --drd_opts)          read -ra DRD_OPTS <<< "$2"; shift 2 ;;
+        --dryrun)            DRY_RUN=true; shift 1 ;;
+        --output)            OUTPUT="$2"; shift 2 ;;
+        --dorado)            DORADO_VERSION="$2"; shift 2 ;;
         *) echo "Error: Unknown parameter '$1'" >&2; exit 1 ;;  
     esac
 done
@@ -99,7 +84,6 @@ done
 # Pre-flight Summary
 # ------------------------------------------------------------------------------
 echo "DRYRUN mode: ${DRY_RUN}"
-echo "Estimate Poly-A: ${ESTIMATE_POLY_A}"
 
 # ------------------------------------------------------------------------------
 # Input Validation
@@ -116,14 +100,6 @@ if [[ "$DRY_RUN" != true ]]; then
   if [[ -z "$MODEL" ]]; then
       echo "Error: --model is required" >&2
       exit 1
-  fi
-  if [[ -n "$REFERENCE" && ! -f "$REFERENCE" ]]; then
-      echo "Error: Reference file '$REFERENCE' not found" >&2
-      exit 1
-  fi
-  if [[ -n "$REFERENCE" && -z "$REF_NAME" ]]; then
-      REF_NAME=$(basename "$REFERENCE" | cut -d. -f1 | cut -d_ -f1 | cut -c1-5)
-      echo "Using abbreviated reference name: $REF_NAME"
   fi
 fi
 
@@ -172,23 +148,13 @@ process_directory() {
     local LOG_FILE="./logs/${DIRNAME}_${VERSION_STRING}.log"
 
     # Construct basecaller args
-    local POLYA_ARG=""
-    if [[ "$ESTIMATE_POLY_A" == true ]]; then
-        POLYA_ARG="--estimate-poly-a"
-    fi
-
     local BASECALL_MODEL="$MODEL"
     if [[ -n "$MOD" ]]; then
         BASECALL_MODEL="${BASECALL_MODEL},${MOD}"
     fi
 
-    local REF_ARG=""
-    if [[ -n "$REFERENCE" ]]; then
-        REF_ARG="--reference ${REFERENCE}"
-    fi
-
     # Build final command
-    local CMD="${DORADO} basecaller ${BASECALL_MODEL} ${INPUT_DIR} --recursive ${REF_ARG} ${POLYA_ARG} -x cuda:0,1,2,3"
+    local CMD="${DORADO} basecaller ${BASECALL_MODEL} ${INPUT_DIR} --recursive ${DRD_OPTS[*]} -x cuda:0,1,2,3"
 
     # Logging
     echo "==================== JOB START ====================" | tee -a "$LOG_FILE"

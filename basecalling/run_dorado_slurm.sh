@@ -30,7 +30,7 @@ set -o xtrace        # Enable xtrace for debugging
 #
 # OPTIONAL ARGUMENTS:
 #   --mod         Modification model(s) (e.g., 5mCG_5hmCG,6mA)
-#   --duplex      Run duplex basecalling
+#   --drd_opts    Extra options passed directly to dorado (e.g., "--estimate-poly-a")
 #   --project     Output base directory (default: ${BASE_DIR}/basecalled)
 #   --dorado      Dorado version (default: current symlink)
 #
@@ -55,7 +55,7 @@ readonly SCRATCH_DIR="/data/scratch/$(whoami)/temp"
 POD5LIST=""
 MODEL=""
 MOD=""
-DUPLEX=false
+DRD_OPTS=()
 PROJECT=""
 DORADO_VERSION=""
 
@@ -63,10 +63,10 @@ DORADO_VERSION=""
 set +e  # Temporarily disable error checking
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --duplex) DUPLEX=true ;;
         --pod5list) POD5LIST="$2"; shift ;;
         --model) MODEL="$2"; shift ;;
         --mod) MOD="$2"; shift ;;
+        --drd_opts) read -ra DRD_OPTS <<< "$2"; shift ;;
         --project) PROJECT="$2"; shift ;;
         --dorado) DORADO_VERSION="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
@@ -225,22 +225,14 @@ fi
 echo "Start basecalling at: ${DATE}"
 
 # Modify BAMNAME to avoid commas
-if $DUPLEX && [[ -n $MOD ]]; then
-    echo "This is duplex data and mod model was provided, will run duplex with modifications."
-    BAMNAME=${OUTPUT}/${FULLNAME}_${VERSIONS}_${MOD//,/_}
-    $DORADO duplex ${MODEL},${MOD} ${INPUT} --recursive --batchsize 256 > ${BAMNAME}.bam
-elif $DUPLEX; then
-    echo "This is duplex data, will run duplex."
-    BAMNAME=${OUTPUT}/${FULLNAME}_${VERSIONS}
-    $DORADO duplex ${MODEL} ${INPUT} --recursive --batchsize 256 > ${BAMNAME}.bam
-elif [[ -n $MOD ]]; then
+if [[ -n $MOD ]]; then
     echo "Mod model was provided, will run with modifications."
     BAMNAME=${OUTPUT}/${FULLNAME}_${VERSIONS}_${MOD//,/_}
-    $DORADO basecaller ${MODEL},${MOD} ${INPUT} --recursive --batchsize 256 > ${BAMNAME}.bam
+    $DORADO basecaller ${MODEL},${MOD} ${INPUT} --recursive --batchsize 256 "${DRD_OPTS[@]}" > ${BAMNAME}.bam
 else
     echo "No mod model was provided, will run without modifications."
     BAMNAME=${OUTPUT}/${FULLNAME}_${VERSIONS}
-    $DORADO basecaller ${MODEL} ${INPUT} --recursive --batchsize 256 > ${BAMNAME}.bam
+    $DORADO basecaller ${MODEL} ${INPUT} --recursive --batchsize 256 "${DRD_OPTS[@]}" > ${BAMNAME}.bam
 fi
 
 echo "End basecalling at: ${DATE}"
