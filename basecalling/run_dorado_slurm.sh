@@ -121,7 +121,7 @@ else
 fi
 
 # Setup input and output directories
-if [[ ${POD5:0:2} == "s3" && ${POD5: -4} == ".tar" ]]; then
+if [[ ${POD5:0:2} == "s3" && ( ${POD5: -7} == ".tar.gz" || ${POD5: -4} == ".tgz" ) ]]; then
     INPUT="${INBASEDIR}/${SAMPLEID}/${FULLNAME}"
     OUTPUT="${OUTBASEDIR}"
     mkdir -p ${INPUT}
@@ -129,13 +129,38 @@ if [[ ${POD5:0:2} == "s3" && ${POD5: -4} == ".tar" ]]; then
     # Get the size of the S3 object in bytes
     POD5_SIZE=$(aws s3 ls ${POD5} --no-sign-request | awk '{print $3}')
 
-   # Get the size of the local directory in bytes
+    # Get the size of the local directory in bytes
     if [[ -d "${INPUT}" ]]; then
         INPUT_SIZE=$(du -sb "${INPUT}" | awk '{print $1}')
     else
         INPUT_SIZE=0
     fi
-  
+
+    # Check if the local file size is less than the S3 object size
+    if (( INPUT_SIZE < POD5_SIZE )); then
+        echo "Downloading and extracting pod5 tar.gz for: ${FULLNAME}"
+        aws --no-sign-request s3 cp --no-progress ${POD5} ${INPUT}
+        tar xzf ${INPUT}/*.tar.gz --directory ${INPUT} 2>/dev/null || tar xzf ${INPUT}/*.tgz --directory ${INPUT}
+        rm -f ${INPUT}/*.tar.gz ${INPUT}/*.tgz
+    else
+        echo "Local file is the same size or larger than S3 object. Skipping download."
+    fi
+
+elif [[ ${POD5:0:2} == "s3" && ${POD5: -4} == ".tar" ]]; then
+    INPUT="${INBASEDIR}/${SAMPLEID}/${FULLNAME}"
+    OUTPUT="${OUTBASEDIR}"
+    mkdir -p ${INPUT}
+    mkdir -p ${OUTPUT}
+    # Get the size of the S3 object in bytes
+    POD5_SIZE=$(aws s3 ls ${POD5} --no-sign-request | awk '{print $3}')
+
+    # Get the size of the local directory in bytes
+    if [[ -d "${INPUT}" ]]; then
+        INPUT_SIZE=$(du -sb "${INPUT}" | awk '{print $1}')
+    else
+        INPUT_SIZE=0
+    fi
+
     # Check if the local file size is less than the S3 object size
     if (( INPUT_SIZE < POD5_SIZE )); then
         echo "Downloading and extracting pod5tars for: ${FULLNAME}"
@@ -144,6 +169,19 @@ if [[ ${POD5:0:2} == "s3" && ${POD5: -4} == ".tar" ]]; then
         rm ${INPUT}/*.tar
     else
         echo "Local file is the same size or larger than S3 object. Skipping download."
+    fi
+
+elif [[ ${POD5: -7} == ".tar.gz" || ${POD5: -4} == ".tgz" ]]; then
+    INPUT="${INBASEDIR}/${SAMPLEID}/${FULLNAME}"
+    OUTPUT="${OUTBASEDIR}"
+    mkdir -p ${INPUT}
+    mkdir -p ${OUTPUT}
+    # Check if INPUT directory is not empty (i.e., POD5 may have already been extracted)
+    if [ -z "$(ls -A ${INPUT})" ]; then
+        echo "Extracting pod5 tar.gz for: ${FULLNAME}"
+        tar xzf ${POD5} --directory ${INPUT}
+    else
+        echo "${FULLNAME} seems to have been already extracted to ${INPUT}. Skipping extraction."
     fi
 
 elif [[ ${POD5: -4} == ".tar" ]]; then
