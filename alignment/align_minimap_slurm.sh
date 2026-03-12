@@ -130,8 +130,14 @@ echo "Preset: ${PRESET}"
 echo "Threads: ${THREADS}"
 echo "Output: ${BAMNAME}.bam"
 
-"$MINIMAP2" -ax "${PRESET}" -t "${THREADS}" "${MM2_OPTS[@]}" "${REFERENCE}" "${INPUT}" \
-    | samtools sort -@ "${THREADS}" -o "${BAMNAME}.bam"
+if [[ "${INPUT}" == *.bam ]]; then
+    samtools fastq -T "*" "${INPUT}" \
+        | "$MINIMAP2" -ax "${PRESET}" -t "${THREADS}" "${MM2_OPTS[@]}" "${REFERENCE}" - \
+        | samtools sort -@ "${THREADS}" -o "${BAMNAME}.bam"
+else
+    "$MINIMAP2" -ax "${PRESET}" -t "${THREADS}" "${MM2_OPTS[@]}" "${REFERENCE}" "${INPUT}" \
+        | samtools sort -@ "${THREADS}" -o "${BAMNAME}.bam"
+fi
 
 samtools index "${BAMNAME}.bam"
 
