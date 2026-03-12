@@ -24,9 +24,9 @@ set -o xtrace        # Enable xtrace for debugging
 #
 # REQUIRED ARGUMENTS:
 #   --bamlist     File with one BAM path per line
-#   --kit         Barcoding kit name (e.g., SQK-NBD114-24)
 #
 # OPTIONAL ARGUMENTS:
+#   --kit         Barcoding kit name (e.g., SQK-NBD114-24); required unless --no_classify is set
 #   --no_classify Use existing barcode tags from basecalling (skip re-classification)
 #                 Use this when --kit-name was already passed during basecalling
 #   --emit_fastq  Emit demultiplexed reads as FASTQ instead of BAM
@@ -89,8 +89,8 @@ if [[ -z "$BAMLIST" ]]; then
     exit 1
 fi
 
-if [[ -z "$KIT" ]]; then
-    echo "Error: Missing required argument --kit."
+if [[ -z "$KIT" && "$NO_CLASSIFY" == false ]]; then
+    echo "Error: --kit is required unless --no_classify is set."
     exit 1
 fi
 
@@ -112,7 +112,11 @@ if [[ ! -x "$DORADO" ]]; then
 fi
 
 DORADOVERSION=$($DORADO --version 2>&1 | cut -d'+' -f1)
-VERSIONS="dorado${DORADOVERSION}_demux_${KIT}"
+if [[ -n "$KIT" ]]; then
+    VERSIONS="dorado${DORADOVERSION}_demux_${KIT}"
+else
+    VERSIONS="dorado${DORADOVERSION}_demux"
+fi
 
 # Set output directory
 if [[ -n "$PROJECT" ]]; then
@@ -126,10 +130,13 @@ mkdir -p "${OUTPUT}"
 
 # Build demux arguments
 DEMUX_ARGS=(
-    --kit-name "${KIT}"
     --output-dir "${OUTPUT}"
     --emit-summary
 )
+
+if [[ -n "$KIT" ]]; then
+    DEMUX_ARGS+=(--kit-name "${KIT}")
+fi
 
 if [[ "$NO_CLASSIFY" == true ]]; then
     DEMUX_ARGS+=(--no-classify)
