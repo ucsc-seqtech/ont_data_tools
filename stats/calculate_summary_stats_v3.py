@@ -54,14 +54,9 @@ def transform_file_field(file_field, shortname_option):
     # Handle aggregated mode (multiple file paths separated by commas)
     if "," in file_field:
         files_list = file_field.split(",")
-        new_list = []
-        for item in files_list:
-            parts = item.split("/")
-            new_list.append(parts[1] if len(parts) >= 2 else item)
-        return ",".join(new_list)
+        return ",".join(os.path.basename(item) for item in files_list)
     else:
-        parts = file_field.split("/")
-        return parts[1] if len(parts) >= 2 else file_field
+        return os.path.basename(file_field)
 
 def process_single_file(inFile, actual_genome_size):
     """
@@ -292,8 +287,8 @@ def main(myCommandLine=None):
                       help="Directory or wildcard pattern to search for directories containing files starting with 'sequencing_summary' or ending with '_summary.txt.gz'")
     parser.add_option("--shortname", dest="shortname", type="choice", choices=["yes", "no"], default="yes",
                       help="If 'yes' (default), output only the second field from the file path; if 'no', output the full file path.")
-    parser.add_option("--append", dest="append_str", type="string", default="fast",
-                      help="Optional string to append to the file name (default: fast)")
+    parser.add_option("--append", dest="append_str", type="string", default="",
+                      help="Optional string to append to the file name (default: none)")
     parser.add_option("--no-append", dest="append_str", action="store_const", const="",
                       help="Do not append any string to the file name (overrides --append)")
     (options, args) = parser.parse_args()

@@ -37,14 +37,9 @@ def transform_file_field(file_field, shortname_option):
 
     if "," in file_field:
         files_list = file_field.split(",")
-        new_list = []
-        for item in files_list:
-            parts = item.split("/")
-            new_list.append(parts[1] if len(parts) >= 2 else item)
-        return ",".join(new_list)
+        return ",".join(os.path.basename(item) for item in files_list)
     else:
-        parts = file_field.split("/")
-        return parts[1] if len(parts) >= 2 else file_field
+        return os.path.basename(file_field)
 
 
 def _open_file(inFile):
@@ -201,8 +196,8 @@ def main(myCommandLine=None):
                         help="Directory or wildcard pattern to search for files starting with 'sequencing_summary' or ending with '_summary.txt.gz'")
     parser.add_argument("--shortname", dest="shortname", choices=["yes", "no"], default="yes",
                         help="If 'yes' (default), output only the second field from the file path; if 'no', output the full file path.")
-    parser.add_argument("--append", dest="append_str", type=str, default="fast",
-                        help="Optional string to append to the sample name (default: fast)")
+    parser.add_argument("--append", dest="append_str", type=str, default="",
+                        help="Optional string to append to the sample name (default: none)")
     parser.add_argument("--no-append", dest="append_str", action="store_const", const="",
                         help="Do not append any string to the sample name (overrides --append)")
     args = parser.parse_args()
