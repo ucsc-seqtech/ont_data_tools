@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=short
 #SBATCH --nodes=1
-#SBATCH --mem=16gb
+#SBATCH --mem=64gb
 #SBATCH --cpus-per-task=4
 #SBATCH --output=%x_%j.log
 #SBATCH --time=1:00:00
